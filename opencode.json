@@ -1,31 +1,23 @@
 {
-  "model": "claude-opus-4-1-20250805",
-  "permissions": [
-    "file_system",
-    "git",
-    "shell",
-    "http_requests"
-  ],
-  "env_access": {
-    "allowed_vars": [
-      "VITE_SUPABASE_URL",
-      "VITE_SUPABASE_ANON_KEY",
-      "SUPABASE_SERVICE_ROLE_KEY",
-      "MUSICBRAINZ_USER_AGENT",
-      "VERCEL_TOKEN",
-      "VERCEL_PROJECT_ID",
-      "VITE_APP_ENV"
-    ],
-    "load_from_file": ".env.local"
-  },
-  "deployment": {
-    "platform": "vercel",
-    "auto_deploy_on_commit": true,
-    "preview_deployment": true
-  },
-  "constraints": {
-    "max_iterations": 50,
-    "timeout_minutes": 120,
-    "stop_on_error": false
+  "$schema": "https://opencode.ai/config.json",
+  "model": "opencode/glm-4.7-free",
+  "default_agent": "build",
+  "permission": {
+    "*": "allow",
+
+    "doom_loop": "allow",
+    "external_directory": "deny",
+
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.env.example": "allow"
+    },
+
+    "bash": {
+      "*": "allow",
+      "rm *": "deny"
+    }
   }
 }

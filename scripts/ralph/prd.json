@@ -1,0 +1,374 @@
+{
+  "branchName": "ralph/1001-albums-generator",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Set up root-level package.json and project structure",
+      "acceptanceCriteria": [
+        "Create package.json at project root with dependencies: vite, vue, axios, supabase, tailwindcss",
+        "Create package.json for frontend with build scripts",
+        "Create package.json for backend API with serverless function support",
+        "Verify all three package.json files are valid JSON",
+        "npm install succeeds in all three directories"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Root package.json is a monorepo organizer. Frontend and API have their own dependencies."
+    },
+    {
+      "id": "US-002",
+      "title": "Create Supabase database schema for albums and ratings",
+      "acceptanceCriteria": [
+        "Create supabase/migrations/001_create_schema.sql migration file",
+        "Create 'albums' table with columns: id (uuid), musicbrainz_id (text), artist (text), album_name (text), release_year (int), genres (text[]), cover_art_url (text), created_at (timestamp)",
+        "Create 'user_sessions' table with columns: session_id (uuid), project_name (text), created_at (timestamp), updated_at (timestamp)",
+        "Create 'ratings' table with columns: id (uuid), session_id (uuid), album_id (uuid), rating (int 1-5), review (text), rated_at (timestamp)",
+        "Add foreign key constraints from ratings to albums and user_sessions",
+        "Add indexes on (session_id, album_id) and (created_at) for performance",
+        "Connect to Supabase and apply migration manually via SQL editor (Ralph will document steps)",
+        "Verify all tables exist in Supabase dashboard"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Store this migration file for reference. Supabase migrations can be applied via dashboard or CLI. Include instructions in progress.txt."
+    },
+    {
+      "id": "US-003",
+      "title": "Create CSV reader script to seed albums into Supabase",
+      "acceptanceCriteria": [
+        "Create api/seedAlbums.js that reads data/albums-seed.csv",
+        "Parse CSV and extract: artist, album_name, release_year, genres",
+        "For each album, query MusicBrainz API with search?query=artist:{artist}%20release:{album_name}",
+        "Extract musicbrainz_id from first result (if found)",
+        "For each MusicBrainz ID, fetch cover art from coverartarchive.org/release/{mbid}",
+        "Insert albums into Supabase with all fields populated",
+        "Handle missing cover images gracefully (use placeholder URL)",
+        "Log success/failure for each album to console",
+        "All 250 albums should be in Supabase after completion",
+        "Verify via Supabase dashboard that albums table has ~250 rows"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Use supabase-js client to connect. Include proper error handling. Include User-Agent header for MusicBrainz API. Store musicbrainz_id even if cover not found."
+    },
+    {
+      "id": "US-004",
+      "title": "Create Vercel API route to fetch random album",
+      "acceptanceCriteria": [
+        "Create api/albums.js as Vercel serverless function",
+        "Endpoint: GET /api/albums?sessionId={sessionId}",
+        "Generate random album from albums table",
+        "Return JSON: { id, artist, album_name, release_year, genres, cover_art_url, musicbrainz_id }",
+        "Include proper CORS headers for frontend requests",
+        "Handle missing sessionId with 400 error",
+        "Test with curl: curl 'http://localhost:3000/api/albums?sessionId=test'",
+        "Verify endpoint works locally with vercel dev",
+        "typecheck passes",
+        "npm test passes for this function"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Use @supabase/supabase-js client. Keep sessionId optional for initial testing. Return next unrated album if available, else random."
+    },
+    {
+      "id": "US-005",
+      "title": "Create Vercel API route to submit album rating",
+      "acceptanceCriteria": [
+        "Create api/ratings.js as Vercel serverless function",
+        "Endpoint: POST /api/ratings with body: { sessionId, albumId, rating, review }",
+        "Validate rating is 1-5 integer",
+        "Insert rating into ratings table with timestamp",
+        "Return JSON: { success: true, message: 'Rating saved' }",
+        "Handle validation errors with 400 response",
+        "Handle database errors with 500 response",
+        "Test with curl POST request",
+        "Verify data appears in Supabase ratings table",
+        "typecheck passes",
+        "npm test passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Review field is optional. Make sure to return all relevant data for frontend confirmation."
+    },
+    {
+      "id": "US-006",
+      "title": "Create Vercel API route to fetch user's rated albums",
+      "acceptanceCriteria": [
+        "Create api/history.js endpoint: GET /api/history?sessionId={sessionId}",
+        "Query ratings table for given sessionId and join with albums table",
+        "Return array of objects: { album: {...}, rating, review, rated_at }",
+        "Sort by rated_at descending (newest first)",
+        "Include pagination: ?limit=20&offset=0",
+        "Return total count in response",
+        "Handle missing sessionId with 400 error",
+        "Test with curl request",
+        "Verify response includes proper album metadata",
+        "typecheck passes",
+        "npm test passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "This enables users to view their listening history. Pagination helps with performance."
+    },
+    {
+      "id": "US-007",
+      "title": "Create Vue 3 home page component",
+      "acceptanceCriteria": [
+        "Create src/components/HomePage.vue with project name input form",
+        "Input field for project name (required, trim whitespace)",
+        "Save project name to localStorage under key: '1001albums:projectName'",
+        "On submit, redirect to /player route",
+        "Include description text explaining the app",
+        "Include visual styling with TailwindCSS",
+        "Component properly imports and uses Vue 3 Composition API",
+        "Verify page renders at localhost:5173",
+        "typecheck passes",
+        "Test in browser: enter name, submit, verify localStorage"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "This is the entry point. Keep it simple and clean. Generate sessionId from project name (hash it)."
+    },
+    {
+      "id": "US-008",
+      "title": "Create Vue 3 player page component",
+      "acceptanceCriteria": [
+        "Create src/components/PlayerPage.vue to display current album",
+        "Fetch random album from /api/albums endpoint on mount",
+        "Display: album cover (image), artist, album name, release year, genres",
+        "Show rating buttons (1-5 stars with click handlers)",
+        "Optional review text field (character limit 500)",
+        "Submit rating button that calls /api/ratings endpoint",
+        "Success message after rating submission",
+        "Next button to fetch next album",
+        "Back button to return to home",
+        "Display loading spinner while fetching album",
+        "Handle API errors gracefully with error message",
+        "Styling with TailwindCSS (responsive, clean design)",
+        "Component uses Pinia store for session management",
+        "Verify component renders at localhost:5173/player",
+        "typecheck passes",
+        "Test full rating flow in browser"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "This is the core feature. Use Pinia store to manage sessionId and current album. Keep UI simple and functional."
+    },
+    {
+      "id": "US-009",
+      "title": "Create Vue 3 history/stats page component",
+      "acceptanceCriteria": [
+        "Create src/components/HistoryPage.vue to display user's rated albums",
+        "Fetch history from /api/history endpoint on mount",
+        "Display list of rated albums with rating stars and review (if provided)",
+        "Show total albums rated and average rating",
+        "Include filter dropdown: All / 1 Star / 2 Stars / 3 Stars / 4 Stars / 5 Stars",
+        "Include sort options: Newest First / Oldest First / Highest Rated / Lowest Rated",
+        "Implement search by artist or album name",
+        "Pagination: show 20 albums per page with prev/next buttons",
+        "Export history as CSV button",
+        "TailwindCSS styling",
+        "Verify page renders at localhost:5173/history",
+        "typecheck passes",
+        "Test filtering, sorting, search, pagination in browser"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Stats page mirrors original 1001 site but simplified (no global ratings). CSV export is bonus feature."
+    },
+    {
+      "id": "US-010",
+      "title": "Set up Pinia store for session and app state",
+      "acceptanceCriteria": [
+        "Create src/stores/appStore.js with Pinia",
+        "Store properties: sessionId, projectName, currentAlbum, ratings[]",
+        "Actions: setSession(name), getCurrentAlbum(), addRating(albumId, rating, review), getHistory()",
+        "Persist sessionId to localStorage",
+        "Restore sessionId on app load",
+        "Actions properly call API endpoints",
+        "All state mutations are reactive",
+        "typecheck passes",
+        "Test store with unit tests (import and call actions)"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Pinia replaces Vuex. Keep store simple. Each page component should access store for data."
+    },
+    {
+      "id": "US-011",
+      "title": "Create Vue 3 router and navigation structure",
+      "acceptanceCriteria": [
+        "Create src/router/index.js with Vue Router",
+        "Routes: / (home), /player (album player), /history (history/stats)",
+        "Create src/App.vue with router-view and navigation header",
+        "Navigation header shows project name (from localStorage)",
+        "Navigation links to home, player, history pages",
+        "Active link styling (indicate current page)",
+        "Responsive navigation (hamburger menu on mobile)",
+        "Page transitions with smooth effects",
+        "typecheck passes",
+        "Test all routes load correctly"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Keep navigation minimal and clean. Header should appear on all pages."
+    },
+    {
+      "id": "US-012",
+      "title": "Set up Vite build configuration and TailwindCSS",
+      "acceptanceCriteria": [
+        "Configure vite.config.js with Vue plugin and proper build settings",
+        "Install TailwindCSS and configure tailwind.config.js",
+        "Create src/styles/index.css with Tailwind imports",
+        "Import global styles in src/main.js",
+        "Verify npm run dev starts dev server on localhost:5173",
+        "Verify npm run build creates dist/ folder with optimized assets",
+        "Verify dist/ contains index.html and JS bundles",
+        "npm run preview shows production build locally",
+        "typecheck passes (if TypeScript)",
+        "All Tailwind utilities available in components"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Vite is much faster than Webpack. Build should complete in <5s."
+    },
+    {
+      "id": "US-013",
+      "title": "Create environment variable configuration for frontend",
+      "acceptanceCriteria": [
+        "Create frontend/.env.example with template variables",
+        "Frontend reads VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from environment",
+        "Create Supabase client in src/api/supabase.js that initializes with these keys",
+        "Verify frontend can connect to Supabase (test from browser console)",
+        "Document environment variable setup in README.md",
+        "Verify GitHub Actions (or Vercel) will load these from deployment secrets",
+        "typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "Frontend only needs ANON key (publishable). Secret key stays in backend only."
+    },
+    {
+      "id": "US-014",
+      "title": "Create comprehensive README and deployment guide",
+      "acceptanceCriteria": [
+        "Create README.md with project description, features, and tech stack",
+        "Include 'Getting Started' section with dev environment setup",
+        "Include 'Deployment' section with Vercel + Supabase instructions",
+        "Include 'Project Structure' section explaining folder layout",
+        "Include 'Ralph Loop' section explaining autonomous development",
+        "Include links to key resources (Supabase docs, Vue docs, Vite docs)",
+        "Document environment variables required (.env.local template)",
+        "Include troubleshooting section for common issues",
+        "Document MusicBrainz API rate limits and best practices",
+        "Verify README is clear and complete"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "This is for future developers (including yourself). Be thorough."
+    },
+    {
+      "id": "US-015",
+      "title": "Add unit tests for API endpoints",
+      "acceptanceCriteria": [
+        "Create __tests__/api.test.js for API endpoint testing",
+        "Test GET /api/albums returns valid album object",
+        "Test GET /api/albums with missing sessionId returns 400",
+        "Test POST /api/ratings with valid data returns success",
+        "Test POST /api/ratings with invalid rating (0 or 6) returns 400",
+        "Test GET /api/history returns array of ratings",
+        "All tests pass with npm test",
+        "Verify test output shows coverage percentage",
+        "Tests use proper mocking for Supabase client"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "Use Jest or Vitest for testing. Mock database calls to avoid hitting real Supabase."
+    },
+    {
+      "id": "US-016",
+      "title": "Add unit tests for Vue components",
+      "acceptanceCriteria": [
+        "Create __tests__/components.test.js for component testing",
+        "Test HomePage component renders input form",
+        "Test HomePage component saves project name to localStorage",
+        "Test PlayerPage component fetches album on mount",
+        "Test rating buttons emit correct events",
+        "Test HistoryPage component displays rated albums",
+        "Test routing between pages",
+        "All tests pass with npm test",
+        "Components properly isolated with mocks for API calls"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "Use Vue Test Utils + Vitest. Mock Axios/Fetch calls to API."
+    },
+    {
+      "id": "US-017",
+      "title": "Configure Vercel deployment settings and environment secrets",
+      "acceptanceCriteria": [
+        "Verify Vercel project is linked to GitHub repository",
+        "Add VITE_SUPABASE_URL environment variable to Vercel project settings",
+        "Add VITE_SUPABASE_ANON_KEY environment variable to Vercel project settings",
+        "Add SUPABASE_SECRET_KEY environment variable to Vercel project settings (for API functions only)",
+        "Verify build command is: npm run build",
+        "Verify output directory is: dist/",
+        "Set production branch to main",
+        "Enable automatic deployments on main branch pushes",
+        "Verify Vercel build succeeds (should complete in <2 min)",
+        "Test deployed site at Vercel URL",
+        "Verify API endpoints work from deployed frontend"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "Environment variables are critical. Double-check they're set correctly before deploying."
+    },
+    {
+      "id": "US-018",
+      "title": "Test full end-to-end workflow (local + deployed)",
+      "acceptanceCriteria": [
+        "Start local dev server: npm run dev",
+        "Load home page, enter project name, submit",
+        "Verify redirected to player page",
+        "Verify album loads with artist, name, cover image",
+        "Submit a 5-star rating with review",
+        "Verify rating saved in Supabase ratings table",
+        "Navigate to history page",
+        "Verify rated album appears in history with correct data",
+        "Test filtering and sorting in history",
+        "Deploy to Vercel (via git push or manual trigger)",
+        "Test same flow on deployed Vercel URL",
+        "Verify all API calls work (network tab shows 200 responses)",
+        "Verify cover images load properly",
+        "Test on mobile browser (responsive design)",
+        "Document any issues found and fixes applied"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "This is the final integration test. Everything should work seamlessly. Use browser dev tools to debug."
+    },
+    {
+      "id": "US-019",
+      "title": "Final cleanup, optimizations, and documentation",
+      "acceptanceCriteria": [
+        "Remove any console.log statements (except for error logging)",
+        "Verify no TypeScript errors (if using TypeScript)",
+        "Verify no ESLint warnings (fix all style issues)",
+        "Optimize bundle size (check npm run build output)",
+        "Remove unused dependencies from package.json files",
+        "Add loading states and error boundaries to all components",
+        "Verify all images are optimized (convert to WebP if needed)",
+        "Add proper meta tags to index.html (title, description, og tags)",
+        "Verify site is mobile-responsive on all breakpoints",
+        "Create CONTRIBUTING.md for future developers",
+        "Update README with final features and instructions",
+        "Verify all git commits are clean (no large files, no secrets)",
+        "Final git push with commit message: 'Ralph deployment complete: 1001 Albums Generator v1.0'",
+        "Verify deployment shows no errors in Vercel dashboard"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "This is the final polish. Take time to ensure code quality and user experience are excellent."
+    }
+  ]
+}
